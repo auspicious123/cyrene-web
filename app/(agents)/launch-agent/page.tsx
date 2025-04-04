@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,18 +6,25 @@ import { Textarea } from "@/components/ui/textarea";
 import { Image as LucidImage, Upload, FileUp, Sparkles } from "lucide-react";
 import Image from "next/image";
 import { useRef, useState } from "react";
-import axios from 'axios';
+import axios from "axios";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { GlowButton } from "@/components/ui/glow-button";
 import StarCanvas from "@/components/StarCanvas";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useEffect } from "react";
 import VoiceManager, { Voice } from "@/utils/voiceUtils";
 import { generateCharacterInfo } from "@/app/utils/openaiUtils";
-import { useAppKitAccount } from '@reown/appkit/react'; // For Ethereum wallet
-import { useWallet } from '@solana/wallet-adapter-react'; // For Solana wallet
+import { useAppKitAccount } from "@reown/appkit/react"; // For Ethereum wallet
+import { useWallet } from "@solana/wallet-adapter-react"; // For Solana wallet
+import { useAptosWallet } from "@/hooks/useAptosWallet"; // For Petra wallet
 
 interface AgentData {
   name: string;
@@ -49,9 +56,9 @@ interface AgentConfig {
 const agentApi = {
   async createAgent(agentData: AgentData) {
     try {
-      const response = await axios.post('/api/createAgent', agentData, {
+      const response = await axios.post("/api/createAgent", agentData, {
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       });
       return response.data;
@@ -65,20 +72,20 @@ const agentApi = {
 export default function LaunchAgentPage() {
   const [previewAudio, setPreviewAudio] = useState<string | null>(null);
   const [voices, setVoices] = useState<Voice[]>([]);
-  const [selectedVoice, setSelectedVoice] = useState<string>('af_bella');
+  const [selectedVoice, setSelectedVoice] = useState<string>("af_bella");
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const voiceManager = useRef(new VoiceManager());
 
   const [preview, setPreview] = useState<string | null>(null);
-  const [domain, setDomain] = useState('');
-  const [name, setName] = useState('');
-  const [oneLiner, setOneLiner] = useState('');
-  const [description, setDescription] = useState('');
+  const [domain, setDomain] = useState("");
+  const [name, setName] = useState("");
+  const [oneLiner, setOneLiner] = useState("");
+  const [description, setDescription] = useState("");
   const [characterInfo, setCharacterInfo] = useState({
-    bio: '',
-    lore: '',
-    knowledge: ''
+    bio: "",
+    lore: "",
+    knowledge: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
@@ -88,12 +95,18 @@ export default function LaunchAgentPage() {
   const bioInputRef = useRef<HTMLInputElement>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
-  const [avatarHash, setAvatarHash] = useState<string>('');
-  const [coverHash, setCoverHash] = useState<string>('');
+  const [avatarHash, setAvatarHash] = useState<string>("");
+  const [coverHash, setCoverHash] = useState<string>("");
 
   // Wallet connection
-  const { address: ethAddress, isConnected: isEthConnected } = useAppKitAccount(); // Ethereum wallet
+  const { address: ethAddress, isConnected: isEthConnected } =
+    useAppKitAccount(); // Ethereum wallet
   const { publicKey: solAddress, connected: isSolConnected } = useWallet(); // Solana wallet
+  const {
+    address: petraAddress,
+    connected: isPetraConnected,
+    connect: connectPetra,
+  } = useAptosWallet(); // Petra wallet
   const [wallet_address, setWalletAddress] = useState<string | null>(null);
 
   // Handle wallet address changes
@@ -102,15 +115,26 @@ export default function LaunchAgentPage() {
       setWalletAddress(ethAddress);
     } else if (isSolConnected && solAddress) {
       setWalletAddress(solAddress.toBase58());
+    } else if (isPetraConnected && petraAddress) {
+      setWalletAddress(petraAddress);
     } else {
       setWalletAddress(null);
     }
-  }, [isEthConnected, isSolConnected, ethAddress, solAddress]);
+  }, [
+    isEthConnected,
+    isSolConnected,
+    isPetraConnected,
+    ethAddress,
+    solAddress,
+    petraAddress,
+  ]);
 
   // Handle AI generation
   const handleGenerateWithAI = async () => {
     if (!oneLiner || !description) {
-      toast.error("Please provide a one-liner and description before generating with AI.");
+      toast.error(
+        "Please provide a one-liner and description before generating with AI."
+      );
       return;
     }
 
@@ -124,7 +148,7 @@ export default function LaunchAgentPage() {
       });
       toast.success("Character information generated successfully!");
     } catch (error) {
-      console.error('Error generating character info:', error);
+      console.error("Error generating character info:", error);
       toast.error("Failed to generate character information with AI.");
     } finally {
       setIsGenerating(false);
@@ -139,10 +163,14 @@ export default function LaunchAgentPage() {
     setIsLoadingPreview(true);
 
     try {
-      const response = await axios.post('/api/tts', {
-        text: "Hello, I'm your AI assistant",
-        voice: voiceId,
-      }, { responseType: 'blob' });
+      const response = await axios.post(
+        "/api/tts",
+        {
+          text: "Hello, I'm your AI assistant",
+          voice: voiceId,
+        },
+        { responseType: "blob" }
+      );
 
       // Stop and clean up previous audio
       if (audioRef.current) {
@@ -151,14 +179,17 @@ export default function LaunchAgentPage() {
         URL.revokeObjectURL(audioRef.current.src);
       }
 
-      const audioUrl = URL.createObjectURL(new Blob([response.data], { type: 'audio/mpeg' }));
+      const audioUrl = URL.createObjectURL(
+        new Blob([response.data], { type: "audio/mpeg" })
+      );
       setPreviewAudio(audioUrl);
 
       // Create a new Audio object
       const newAudio = new Audio(audioUrl);
       audioRef.current = newAudio;
 
-      newAudio.play()
+      newAudio
+        .play()
         .then(() => {
           console.log("Audio playing successfully");
         })
@@ -175,10 +206,9 @@ export default function LaunchAgentPage() {
         URL.revokeObjectURL(audioUrl);
         setPreviewAudio(null);
       };
-
     } catch (error) {
-      console.error('Error previewing voice:', error);
-      toast.error('Failed to preview voice');
+      console.error("Error previewing voice:", error);
+      toast.error("Failed to preview voice");
     } finally {
       setIsLoadingPreview(false);
     }
@@ -197,29 +227,32 @@ export default function LaunchAgentPage() {
   // Handle file upload to IPFS
   const uploadToIPFS = async (file: File): Promise<string> => {
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append("file", file);
 
     try {
-      const response = await axios.post('/api/ipfs', formData, {
+      const response = await axios.post("/api/ipfs", formData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
+          "Content-Type": "multipart/form-data",
         },
       });
       return response.data.Hash;
     } catch (error) {
-      console.error('IPFS upload error:', error);
-      toast.error('Failed to upload image to IPFS');
+      console.error("IPFS upload error:", error);
+      toast.error("Failed to upload image to IPFS");
       throw error;
     }
   };
 
   // Handle file change for avatar and cover images
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>, type: 'avatar' | 'cover') => {
+  const handleFileChange = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+    type: "avatar" | "cover"
+  ) => {
     const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
-        if (type === 'avatar') {
+        if (type === "avatar") {
           setAvatarPreview(e.target?.result as string);
         } else {
           setCoverPreview(e.target?.result as string);
@@ -229,12 +262,12 @@ export default function LaunchAgentPage() {
 
       try {
         const hash = await uploadToIPFS(file);
-        if (type === 'avatar') {
+        if (type === "avatar") {
           setAvatarHash(hash);
-          toast.success('Avatar image uploaded successfully');
+          toast.success("Avatar image uploaded successfully");
         } else {
           setCoverHash(hash);
-          toast.success('Cover image uploaded successfully');
+          toast.success("Cover image uploaded successfully");
         }
       } catch (error) {
         toast.error(`Failed to upload ${type} image`);
@@ -251,9 +284,9 @@ export default function LaunchAgentPage() {
         try {
           const json: AgentConfig = JSON.parse(e.target?.result as string);
           setCharacterInfo({
-            bio: json.bio.join('\n'),
-            lore: json.lore.join('\n'),
-            knowledge: json.knowledge.join('\n')
+            bio: json.bio.join("\n"),
+            lore: json.lore.join("\n"),
+            knowledge: json.knowledge.join("\n"),
           });
           toast.success("Character information loaded successfully!");
         } catch (error) {
@@ -286,49 +319,50 @@ export default function LaunchAgentPage() {
     try {
       const formData = new FormData();
 
-      
-
-      formData.append('wallet_address', wallet_address); 
-      formData.append('character_file', JSON.stringify({
-        name,
-        clients: [],
-        oneLiner,
-        description,
-        bio: characterInfo.bio.split("\n"),
-        lore: characterInfo.lore.split("\n"),
-        knowledge: characterInfo.knowledge.split("\n"),
-        messageExamples: [
-          [
-            {
-              user: "{{user1}}",
-              content: { text: "What is your role?" },
-            },
-            {
-              user: name,
-              content: { text: "I am here to help you" },
-            },
+      formData.append("wallet_address", wallet_address);
+      formData.append(
+        "character_file",
+        JSON.stringify({
+          name,
+          clients: [],
+          oneLiner,
+          description,
+          bio: characterInfo.bio.split("\n"),
+          lore: characterInfo.lore.split("\n"),
+          knowledge: characterInfo.knowledge.split("\n"),
+          messageExamples: [
+            [
+              {
+                user: "{{user1}}",
+                content: { text: "What is your role?" },
+              },
+              {
+                user: name,
+                content: { text: "I am here to help you" },
+              },
+            ],
           ],
-        ],
-        postExamples: [],
-        topics: [],
-        adjectives: [""],
-        plugins: [],
-        style: {
-          all: [""],
-          chat: [""],
-          post: [""],
-        },
-        organization: "cyrene", 
-      }));
+          postExamples: [],
+          topics: [],
+          adjectives: [""],
+          plugins: [],
+          style: {
+            all: [""],
+            chat: [""],
+            post: [""],
+          },
+          organization: "cyrene",
+        })
+      );
 
-      formData.append('avatar_img', avatarHash);
-      formData.append('cover_img', coverHash);
-      formData.append('voice_model', selectedVoice);
-      formData.append('domain', domain);
+      formData.append("avatar_img", avatarHash);
+      formData.append("cover_img", coverHash);
+      formData.append("voice_model", selectedVoice);
+      formData.append("domain", domain);
 
-      const response = await axios.post('/api/createAgent', formData, {
+      const response = await axios.post("/api/createAgent", formData, {
         headers: {
-          'Content-Type': 'multipart/form-data',
+          "Content-Type": "multipart/form-data",
         },
       });
 
@@ -336,14 +370,14 @@ export default function LaunchAgentPage() {
         duration: 4000,
         action: {
           label: "Chat Now",
-          onClick: () => router.push(`/explore-agents/chat/${response.data.agent.id}`),
+          onClick: () =>
+            router.push(`/explore-agents/chat/${response.data.agent.id}`),
         },
       });
 
       setTimeout(() => {
         router.push(`/explore-agents/chat/${response.data.agent.id}`);
       }, 2000);
-
     } catch (error) {
       console.error("API Error:", error);
       toast.error("Failed to create agent");
@@ -391,58 +425,99 @@ export default function LaunchAgentPage() {
                   value={name}
                   onChange={(e) => {
                     const newValue = e.target.value.toLowerCase();
-                    if (newValue === '' || isValidName(newValue)) {
+                    if (newValue === "" || isValidName(newValue)) {
                       setName(newValue);
                     }
                   }}
                   onBlur={() => {
                     if (name && !isValidName(name)) {
-                      toast.error("Name must start with a lowercase letter or number and can only contain lowercase letters, numbers, dots, and hyphens");
+                      toast.error(
+                        "Name must start with a lowercase letter or number and can only contain lowercase letters, numbers, dots, and hyphens"
+                      );
                     }
                   }}
                 />
                 <p className="text-sm text-blue-300/70 mt-2">
-                  Must start with a lowercase letter or number. Can contain lowercase letters, numbers, dots, and hyphens.
+                  Must start with a lowercase letter or number. Can contain
+                  lowercase letters, numbers, dots, and hyphens.
                 </p>
               </div>
 
               <div>
-                <Label className="text-lg mb-2 text-blue-300">Wallet Address</Label>
+                <Label className="text-lg mb-2 text-blue-300">
+                  Wallet Address
+                </Label>
                 <Input
                   value={wallet_address || "Not connected"}
                   disabled
                   className="bg-[rgba(33,37,52,0.7)] border-none ring-1 ring-blue-500/30 focus-visible:ring-2 focus-visible:ring-blue-500 transition-all"
                 />
                 {!wallet_address && (
-                  <p className="text-sm text-red-500 mt-2">
-                    Please connect your wallet to proceed.
-                  </p>
+                  <div className="mt-2">
+                    <p className="text-sm text-red-500 mb-2">
+                      Please connect your wallet to proceed.
+                    </p>
+                    <GlowButton
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await connectPetra("Petra");
+                        } catch (error) {
+                          console.error(
+                            "Failed to connect to Petra wallet:",
+                            error
+                          );
+                          toast.error(
+                            "Failed to connect to Petra wallet. Please try again."
+                          );
+                        }
+                      }}
+                      className="inline-flex items-center justify-center gap-2 px-4 py-2 whitespace-nowrap"
+                    >
+                      Connect Petra Wallet
+                    </GlowButton>
+                  </div>
                 )}
               </div>
 
               <div>
-                <Label className="text-lg mb-2 text-blue-300">Upload Images</Label>
+                <Label className="text-lg mb-2 text-blue-300">
+                  Upload Images
+                </Label>
                 <div className="grid grid-cols-2 gap-6">
                   <div>
                     <p className="text-sm text-blue-300 mb-2">Avatar Image</p>
                     <div className="grid grid-cols-2 gap-4">
                       <label className="col-span-1 border-2 border-dashed p-4 flex flex-col items-center justify-center cursor-pointer bg-[rgba(33,37,52,0.7)] border-blue-500/30 rounded-xl hover:border-blue-500 transition-all group">
-                        <Upload size={24} className="text-blue-400 group-hover:scale-110 transition-transform" />
-                        <p className="mt-2 text-center text-sm">Upload Avatar</p>
+                        <Upload
+                          size={24}
+                          className="text-blue-400 group-hover:scale-110 transition-transform"
+                        />
+                        <p className="mt-2 text-center text-sm">
+                          Upload Avatar
+                        </p>
                         <input
                           type="file"
                           accept="image/*"
                           className="hidden"
-                          onChange={(e) => handleFileChange(e, 'avatar')}
+                          onChange={(e) => handleFileChange(e, "avatar")}
                         />
                       </label>
                       <div className="border p-4 flex flex-col items-center justify-center bg-[rgba(33,37,52,0.7)] border-blue-500/30 rounded-xl">
                         {avatarPreview ? (
-                          <Image src={avatarPreview} alt="Avatar Preview" width={64} height={64} className="rounded-lg shadow-lg" />
+                          <Image
+                            src={avatarPreview}
+                            alt="Avatar Preview"
+                            width={64}
+                            height={64}
+                            className="rounded-lg shadow-lg"
+                          />
                         ) : (
                           <>
                             <LucidImage size={24} className="text-blue-400" />
-                            <p className="mt-2 text-center text-sm text-blue-300/70">Preview</p>
+                            <p className="mt-2 text-center text-sm text-blue-300/70">
+                              Preview
+                            </p>
                           </>
                         )}
                       </div>
@@ -453,22 +528,33 @@ export default function LaunchAgentPage() {
                     <p className="text-sm text-blue-300 mb-2">Cover Image</p>
                     <div className="grid grid-cols-2 gap-4">
                       <label className="col-span-1 border-2 border-dashed p-4 flex flex-col items-center justify-center cursor-pointer bg-[rgba(33,37,52,0.7)] border-blue-500/30 rounded-xl hover:border-blue-500 transition-all group">
-                        <Upload size={24} className="text-blue-400 group-hover:scale-110 transition-transform" />
+                        <Upload
+                          size={24}
+                          className="text-blue-400 group-hover:scale-110 transition-transform"
+                        />
                         <p className="mt-2 text-center text-sm">Upload Cover</p>
                         <input
                           type="file"
                           accept="image/*"
                           className="hidden"
-                          onChange={(e) => handleFileChange(e, 'cover')}
+                          onChange={(e) => handleFileChange(e, "cover")}
                         />
                       </label>
                       <div className="border p-4 flex flex-col items-center justify-center bg-[rgba(33,37,52,0.7)] border-blue-500/30 rounded-xl">
                         {coverPreview ? (
-                          <Image src={coverPreview} alt="Cover Preview" width={64} height={64} className="rounded-lg shadow-lg" />
+                          <Image
+                            src={coverPreview}
+                            alt="Cover Preview"
+                            width={64}
+                            height={64}
+                            className="rounded-lg shadow-lg"
+                          />
                         ) : (
                           <>
                             <LucidImage size={24} className="text-blue-400" />
-                            <p className="mt-2 text-center text-sm text-blue-300/70">Preview</p>
+                            <p className="mt-2 text-center text-sm text-blue-300/70">
+                              Preview
+                            </p>
                           </>
                         )}
                       </div>
@@ -485,18 +571,24 @@ export default function LaunchAgentPage() {
                   value={oneLiner}
                   onChange={(e) => setOneLiner(e.target.value)}
                 />
-                <p className="text-sm text-blue-300/70 mt-2">Max 90 characters with spaces</p>
+                <p className="text-sm text-blue-300/70 mt-2">
+                  Max 90 characters with spaces
+                </p>
               </div>
 
               <div>
-                <Label className="text-lg mb-2 text-blue-300">Description</Label>
+                <Label className="text-lg mb-2 text-blue-300">
+                  Description
+                </Label>
                 <Textarea
                   placeholder="Write agent description"
                   className="bg-[rgba(33,37,52,0.7)] border-none ring-1 ring-blue-500/30 focus-visible:ring-2 focus-visible:ring-blue-500 transition-all min-h-32"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                 />
-                <p className="text-sm text-blue-300/70 mt-2">Max 300 characters with spaces</p>
+                <p className="text-sm text-blue-300/70 mt-2">
+                  Max 300 characters with spaces
+                </p>
               </div>
 
               <div>
@@ -567,7 +659,9 @@ export default function LaunchAgentPage() {
                 />
                 <GlowButton
                   type="button"
-                  onClick={() => document.getElementById('character-file')?.click()}
+                  onClick={() =>
+                    document.getElementById("character-file")?.click()
+                  }
                   className="inline-flex items-center justify-center gap-2 px-6 py-2 whitespace-nowrap"
                 >
                   Upload Character File
@@ -590,16 +684,20 @@ export default function LaunchAgentPage() {
               </GlowButton>
             </div>
 
-            {['bio', 'lore', 'knowledge'].map((field) => (
+            {["bio", "lore", "knowledge"].map((field) => (
               <div key={field} className="mb-10">
-                <Label className="text-lg mb-2 text-purple-300 capitalize">{field}</Label>
+                <Label className="text-lg mb-2 text-purple-300 capitalize">
+                  {field}
+                </Label>
                 <Textarea
                   placeholder={`Add agent ${field}`}
                   value={characterInfo[field as keyof typeof characterInfo]}
-                  onChange={(e) => setCharacterInfo(prev => ({
-                    ...prev,
-                    [field]: e.target.value
-                  }))}
+                  onChange={(e) =>
+                    setCharacterInfo((prev) => ({
+                      ...prev,
+                      [field]: e.target.value,
+                    }))
+                  }
                   className="bg-[rgba(33,37,52,0.7)] border-none ring-1 ring-purple-500/30 focus-visible:ring-2 focus-visible:ring-purple-500 transition-all min-h-32"
                 />
               </div>
@@ -617,7 +715,9 @@ export default function LaunchAgentPage() {
                   <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
                   <span>Creating Agent...</span>
                 </div>
-              ) : 'Launch Agent'}
+              ) : (
+                "Launch Agent"
+              )}
             </GlowButton>
           </div>
         </form>

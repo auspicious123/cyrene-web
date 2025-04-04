@@ -8,6 +8,10 @@ import { Cursor } from "@/components/ui/cursor";
 import Navbar from "@/components/common/navbar";
 import Footer from "@/components/common/footer";
 import { AptosWalletProvider } from "@/components/AptosWalletProvider";
+import { WalletProvider } from "@/components/common/WalletProvider";
+import { ReactQueryClientProvider } from "@/components/common/ReactQueryClientProvider";
+import { AutoConnectProvider } from "@/components/common/AutoConnectProvider";
+import { ThemeProvider } from "@/components/common/ThemeProvider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -73,15 +77,34 @@ export default async function RootLayout({
       >
         <div className="absolute inset-0"></div>
         <div className="relative z-10">
-          <AptosWalletProvider>
-            <Cursor />
-            <Navbar />
-            <main className="flex-grow min-h-[calc(100vh-200px)]">
-              {children}
-            </main>
-            <Toaster richColors />
-            <Footer />
-          </AptosWalletProvider>
+          {/* <AutoConnectProvider>
+            <ReactQueryClientProvider>
+              <WalletProvider>
+                {children}
+                <Toaster />
+              </WalletProvider>
+            </ReactQueryClientProvider>
+          </AutoConnectProvider> */}
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="dark"
+            enableSystem={false}
+            disableTransitionOnChange
+          >
+            <AutoConnectProvider>
+              <ReactQueryClientProvider>
+                <WalletProvider>
+                  <Cursor />
+                  <Navbar />
+                  <main className="flex-grow min-h-[calc(100vh-200px)]">
+                    {children}
+                  </main>
+                  <Toaster richColors />
+                  <Footer />
+                </WalletProvider>
+              </ReactQueryClientProvider>
+            </AutoConnectProvider>
+          </ThemeProvider>
         </div>
       </body>
     </html>

@@ -1,9 +1,9 @@
 "use client";
 
-import { useWallet } from "@aptos-labs/wallet-adapter-react";
+import { useAptosWallet } from "@/hooks/useAptosWallet";
 
 export default function AptosConnectBtn() {
-  const { connect, disconnect, account, connected } = useWallet();
+  const { connect, disconnect, account, connected } = useAptosWallet();
 
   const handleConnect = async () => {
     try {

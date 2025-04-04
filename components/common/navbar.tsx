@@ -8,6 +8,7 @@ import { FaBars, FaTimes } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAptosWallet } from "@/hooks/useAptosWallet";
 import AptosConnectBtn from "@/components/common/AptosConnectBtn";
+import { WalletSelector as AntdWalletSelector } from "@aptos-labs/wallet-adapter-ant-design";
 
 const Navbar = () => {
   const pathname = usePathname();
@@ -93,7 +94,7 @@ const Navbar = () => {
                   {item.label}
                 </Link>
               ))}
-              <AptosConnectBtn />
+              <AntdWalletSelector />
             </div>
           </div>
 
